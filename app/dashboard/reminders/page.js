@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import ReminderDT from "@/components/ReminderDT";
 
 export default function RemindersPage() {
   const [customers, setCustomers] = useState([]);
   const [reminders, setReminders] = useState([]);
 
-  const [customerId, setCustomerId] = useState("");
+  // const [customerId, setCustomerId] = useState("");
+  const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [message, setMessage] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
 
@@ -36,29 +38,58 @@ export default function RemindersPage() {
     setReminders(data || []);
   }
 
+  // async function addReminder() {
+  //   const {
+  //     data: { user },
+  //   } = await supabase.auth.getUser();
+
+  //   // Konversi datetime-local ke UTC sebelum disimpan
+  //   const scheduledAtUTC = new Date(scheduledAt).toISOString();
+
+  //   const { error } = await supabase.from("reminders").insert([
+  //     {
+  //       user_id: user.id,
+  //       customer_id: customerId,
+  //       message,
+  //       scheduled_at: scheduledAtUTC, // ← pakai UTC
+  //     },
+  //   ]);
+
+  //   if (error) {
+  //     alert(error.message);
+  //     return;
+  //   }
+
+  //   setCustomerId("");
+  //   setMessage("");
+  //   setScheduledAt("");
+
+  //   fetchReminders();
+  // }
+
   async function addReminder() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Konversi datetime-local ke UTC sebelum disimpan
     const scheduledAtUTC = new Date(scheduledAt).toISOString();
 
-    const { error } = await supabase.from("reminders").insert([
-      {
-        user_id: user.id,
-        customer_id: customerId,
-        message,
-        scheduled_at: scheduledAtUTC, // ← pakai UTC
-      },
-    ]);
+    const rows = selectedCustomers.map((customerId) => ({
+      user_id: user.id,
+      customer_id: customerId,
+      message,
+      scheduled_at: scheduledAtUTC,
+      status: "pending",
+    }));
+
+    const { error } = await supabase.from("reminders").insert(rows);
 
     if (error) {
       alert(error.message);
       return;
     }
 
-    setCustomerId("");
+    setSelectedCustomers([]);
     setMessage("");
     setScheduledAt("");
 
@@ -81,7 +112,7 @@ export default function RemindersPage() {
       <h1 className="text-3xl font-bold mb-6">Reminders</h1>
 
       <div className="flex flex-col gap-4 mb-10">
-        <select
+        {/* <select
           className="border p-2"
           value={customerId}
           onChange={(e) => setCustomerId(e.target.value)}
@@ -93,7 +124,37 @@ export default function RemindersPage() {
               {customer.name}
             </option>
           ))}
-        </select>
+        </select> */}
+
+        <div className="border rounded p-4 max-h-60 overflow-y-auto">
+          <p className="font-semibold mb-3">Select Customers</p>
+
+          <div className="flex flex-col gap-2">
+            {customers.map((customer) => (
+              <label key={customer.id} className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedCustomers.includes(customer.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedCustomers([...selectedCustomers, customer.id]);
+                    } else {
+                      setSelectedCustomers(
+                        selectedCustomers.filter((id) => id !== customer.id),
+                      );
+                    }
+                  }}
+                />
+
+                <div>
+                  <p className="font-medium">{customer.name}</p>
+
+                  <p className="text-sm text-gray-500">{customer.phone}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
 
         <textarea
           className="border p-2"
@@ -109,35 +170,24 @@ export default function RemindersPage() {
           onChange={(e) => setScheduledAt(e.target.value)}
         />
 
-        <button
+        {/* <button
           onClick={addReminder}
           className="bg-black text-white p-2 rounded"
+        >
+          Add Reminder
+        </button> */}
+
+        <button
+          onClick={addReminder}
+          disabled={selectedCustomers.length === 0 || !message || !scheduledAt}
+          className="bg-black text-white p-2 rounded disabled:opacity-50"
         >
           Add Reminder
         </button>
       </div>
 
       <div className="flex flex-col gap-4">
-        {reminders.map((reminder) => (
-          <div key={reminder.id} className="border p-4 rounded">
-            <h2 className="font-bold">{reminder.customers?.name}</h2>
-
-            <p>{reminder.customers?.phone}</p>
-
-            <p className="mt-2">{reminder.message}</p>
-
-            <p className="text-sm text-zinc-500 mt-2">
-              {new Date(reminder.scheduled_at).toLocaleString()}
-            </p>
-
-            <button
-              onClick={() => deleteReminder(reminder.id)}
-              className="text-red-500 mt-3"
-            >
-              Delete
-            </button>
-          </div>
-        ))}
+        <ReminderDT />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import CustomerDT from "@/components/CustomerDT";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
@@ -80,28 +81,7 @@ export default function CustomersPage() {
           Add Customer
         </button>
       </div>
-
-      <div className="flex flex-col gap-4">
-        {customers.map((customer) => (
-          <div
-            key={customer.id}
-            className="border p-4 rounded flex justify-between"
-          >
-            <div>
-              <h2 className="font-bold">{customer.name}</h2>
-
-              <p>{customer.phone}</p>
-            </div>
-
-            <button
-              onClick={() => deleteCustomer(customer.id)}
-              className="text-red-500"
-            >
-              Delete
-            </button>
-          </div>
-        ))}
-      </div>
+      <CustomerDT />
     </div>
   );
 }
