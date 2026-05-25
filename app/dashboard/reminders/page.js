@@ -6,12 +6,13 @@ import ReminderDT from "@/components/ReminderDT";
 
 export default function RemindersPage() {
   const [customers, setCustomers] = useState([]);
-  const [reminders, setReminders] = useState([]);
 
-  // const [customerId, setCustomerId] = useState("");
   const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [message, setMessage] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+
+  const [repeatInterval, setRepeatInterval] = useState("");
+  const [repeatUnit, setRepeatUnit] = useState("");
 
   async function fetchCustomers() {
     const { data } = await supabase.from("customers").select("*");
@@ -19,58 +20,25 @@ export default function RemindersPage() {
     setCustomers(data || []);
   }
 
-  async function fetchReminders() {
-    const { data } = await supabase
-      .from("reminders")
-      .select(
-        `
-        *,
-        customers (
-          name,
-          phone
-        )
-      `,
-      )
-      .order("scheduled_at", {
-        ascending: true,
-      });
-
-    setReminders(data || []);
-  }
-
-  // async function addReminder() {
-  //   const {
-  //     data: { user },
-  //   } = await supabase.auth.getUser();
-
-  //   // Konversi datetime-local ke UTC sebelum disimpan
-  //   const scheduledAtUTC = new Date(scheduledAt).toISOString();
-
-  //   const { error } = await supabase.from("reminders").insert([
-  //     {
-  //       user_id: user.id,
-  //       customer_id: customerId,
-  //       message,
-  //       scheduled_at: scheduledAtUTC, // ← pakai UTC
-  //     },
-  //   ]);
-
-  //   if (error) {
-  //     alert(error.message);
-  //     return;
-  //   }
-
-  //   setCustomerId("");
-  //   setMessage("");
-  //   setScheduledAt("");
-
-  //   fetchReminders();
-  // }
-
   async function addReminder() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("User tidak ditemukan");
+      return;
+    }
+
+    if ((repeatInterval && !repeatUnit) || (!repeatInterval && repeatUnit)) {
+      alert("Repeat interval dan unit harus diisi bersamaan");
+      return;
+    }
+
+    if (repeatInterval && Number(repeatInterval) <= 0) {
+      alert("Repeat interval harus lebih dari 0");
+      return;
+    }
 
     const scheduledAtUTC = new Date(scheduledAt).toISOString();
 
@@ -80,6 +48,12 @@ export default function RemindersPage() {
       message,
       scheduled_at: scheduledAtUTC,
       status: "pending",
+
+      repeat_interval: repeatInterval ? Number(repeatInterval) : null,
+
+      repeat_unit: repeatUnit || null,
+
+      is_active: true,
     }));
 
     const { error } = await supabase.from("reminders").insert(rows);
@@ -93,18 +67,14 @@ export default function RemindersPage() {
     setMessage("");
     setScheduledAt("");
 
-    fetchReminders();
-  }
+    setRepeatInterval("");
+    setRepeatUnit("");
 
-  async function deleteReminder(id) {
-    await supabase.from("reminders").delete().eq("id", id);
-
-    fetchReminders();
+    alert("Reminder berhasil ditambahkan");
   }
 
   useEffect(() => {
     fetchCustomers();
-    fetchReminders();
   }, []);
 
   return (
@@ -112,20 +82,6 @@ export default function RemindersPage() {
       <h1 className="text-3xl font-bold mb-6">Reminders</h1>
 
       <div className="flex flex-col gap-4 mb-10">
-        {/* <select
-          className="border p-2"
-          value={customerId}
-          onChange={(e) => setCustomerId(e.target.value)}
-        >
-          <option value="">Select Customer</option>
-
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-            </option>
-          ))}
-        </select> */}
-
         <div className="border rounded p-4 max-h-60 overflow-y-auto">
           <p className="font-semibold mb-3">Select Customers</p>
 
@@ -157,25 +113,69 @@ export default function RemindersPage() {
         </div>
 
         <textarea
-          className="border p-2"
+          className="border p-2 rounded"
           placeholder="Reminder Message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          rows={4}
         />
 
-        <input
-          type="datetime-local"
-          className="border p-2"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-        />
+        <div>
+          <label className="block mb-2 font-medium">Schedule Date & Time</label>
 
-        {/* <button
-          onClick={addReminder}
-          className="bg-black text-white p-2 rounded"
-        >
-          Add Reminder
-        </button> */}
+          <input
+            type="datetime-local"
+            className="border p-2 rounded w-full"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+          />
+        </div>
+
+        <div className="border rounded p-4">
+          <p className="font-semibold mb-3">Repeat Schedule (Optional)</p>
+
+          <div className="flex gap-2 items-center flex-wrap">
+            <span>Every</span>
+
+            <input
+              type="number"
+              min="1"
+              placeholder="1"
+              disabled={!repeatUnit}
+              value={repeatInterval}
+              onChange={(e) => setRepeatInterval(e.target.value)}
+              className="border p-2 rounded w-24 disabled:bg-gray-100"
+            />
+
+            <select
+              value={repeatUnit}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                setRepeatUnit(value);
+
+                if (!value) {
+                  setRepeatInterval("");
+                }
+              }}
+              className="border p-2 rounded"
+            >
+              <option value="">One Time</option>
+
+              {/* Development */}
+              <option value="minute">Minute</option>
+
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+            </select>
+          </div>
+
+          <p className="text-xs text-gray-500 mt-2">
+            Biarkan "One Time" untuk reminder sekali kirim.
+          </p>
+        </div>
 
         <button
           onClick={addReminder}
@@ -186,9 +186,7 @@ export default function RemindersPage() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <ReminderDT />
-      </div>
+      <ReminderDT />
     </div>
   );
 }

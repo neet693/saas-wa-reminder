@@ -6,6 +6,34 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY, // pakai service role, bukan anon key
 );
 
+// Helper Interval Reminder
+function getNextSchedule(date, interval, unit) {
+  const next = new Date(date);
+
+  switch (unit) {
+    case "day":
+      next.setDate(next.getDate() + interval);
+      break;
+
+    case "week":
+      next.setDate(next.getDate() + interval * 7);
+      break;
+
+    case "month":
+      next.setMonth(next.getMonth() + interval);
+      break;
+
+    case "year":
+      next.setFullYear(next.getFullYear() + interval);
+      break;
+
+    default:
+      return null;
+  }
+
+  return next.toISOString();
+}
+
 export async function POST() {
   // Cek WA sudah connect
   if (getStatus() !== "open") {
@@ -21,6 +49,7 @@ export async function POST() {
     .from("reminders")
     .select("*, customers(name, phone)")
     .eq("status", "pending")
+    .eq("is_active", true)
     .lte("scheduled_at", now);
 
   if (error) {
@@ -50,13 +79,32 @@ export async function POST() {
       await sock.sendMessage(jid, { text: reminder.message });
 
       // Update status ke sent
-      await supabase
-        .from("reminders")
-        .update({
-          status: "sent",
-          sent_at: new Date().toISOString(),
-        })
-        .eq("id", reminder.id);
+      const isRecurring = reminder.repeat_interval && reminder.repeat_unit;
+
+      if (isRecurring) {
+        const nextSchedule = getNextSchedule(
+          reminder.scheduled_at,
+          reminder.repeat_interval,
+          reminder.repeat_unit,
+        );
+
+        await supabase
+          .from("reminders")
+          .update({
+            scheduled_at: nextSchedule,
+            sent_at: new Date().toISOString(),
+            status: "pending",
+          })
+          .eq("id", reminder.id);
+      } else {
+        await supabase
+          .from("reminders")
+          .update({
+            status: "sent",
+            sent_at: new Date().toISOString(),
+          })
+          .eq("id", reminder.id);
+      }
 
       console.log(`✅ Reminder terkirim ke ${name} (${phone})`);
       results.push({ id: reminder.id, status: "sent", to: phone });

@@ -1,8 +1,13 @@
+// /** @type {import('next').NextConfig} */
+// const nextConfig = {
+//   experimental: {
+//     instrumentationHook: true, // tambah ini
+//   },
+// };
+
+// export default nextConfig;
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    instrumentationHook: true, // tambah ini
-  },
-};
+const nextConfig = {};
 
 export default nextConfig;
