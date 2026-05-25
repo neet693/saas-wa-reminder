@@ -34,7 +34,8 @@ function getNextSchedule(date, interval, unit) {
   return next.toISOString();
 }
 
-export async function POST() {
+// export async function POST() {
+export async function GET() {
   // Cek WA sudah connect
   if (getStatus() !== "open") {
     return Response.json(
