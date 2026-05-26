@@ -74,16 +74,42 @@ export default function DataTable() {
     return () => clearInterval(interval);
   }, []);
 
-  function renderStatus(status) {
-    if (status === "pending") {
+  // function renderStatus(status) {
+  //   if (status === "pending") {
+  //     return <Badge color="bg-yellow-100 text-yellow-700">⏳ Pending</Badge>;
+  //   }
+
+  //   if (status === "sent") {
+  //     return <Badge color="bg-green-100 text-green-700">✅ Sent</Badge>;
+  //   }
+
+  //   if (status === "failed") {
+  //     return <Badge color="bg-red-100 text-red-700">❌ Failed</Badge>;
+  //   }
+
+  //   return <Badge color="bg-gray-100 text-gray-700">Unknown</Badge>;
+  // }
+
+  function renderStatus(item) {
+    const isRecurring = item.repeat_interval && item.repeat_unit;
+
+    if (isRecurring) {
+      if (!item.is_active) {
+        return <Badge color="bg-gray-100 text-gray-700">⏸ Paused</Badge>;
+      }
+
+      return <Badge color="bg-blue-100 text-blue-700">🔁 Recurring</Badge>;
+    }
+
+    if (item.status === "pending") {
       return <Badge color="bg-yellow-100 text-yellow-700">⏳ Pending</Badge>;
     }
 
-    if (status === "sent") {
+    if (item.status === "sent") {
       return <Badge color="bg-green-100 text-green-700">✅ Sent</Badge>;
     }
 
-    if (status === "failed") {
+    if (item.status === "failed") {
       return <Badge color="bg-red-100 text-red-700">❌ Failed</Badge>;
     }
 
@@ -97,6 +123,7 @@ export default function DataTable() {
 
     const labels = {
       minute: "Minute",
+      hout: "Hour",
       day: "Day",
       week: "Week",
       month: "Month",
@@ -153,7 +180,7 @@ export default function DataTable() {
                       {item.is_active ? "🟢 Active" : "⏸ Paused"}
                     </Badge>
 
-                    {renderStatus(item.status)}
+                    {renderStatus(item)}
                   </div>
                 </div>
 

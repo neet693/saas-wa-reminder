@@ -11,6 +11,14 @@ function getNextSchedule(date, interval, unit) {
   const next = new Date(date);
 
   switch (unit) {
+    case "minute":
+      next.setMinutes(next.getMinutes() + interval);
+      break;
+
+    case "hour":
+      next.setHours(next.getHours() + interval);
+      break;
+
     case "day":
       next.setDate(next.getDate() + interval);
       break;
