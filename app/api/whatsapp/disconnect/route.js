@@ -1,6 +1,20 @@
-import { disconnectWhatsApp } from "@/lib/whatsapp";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
 
 export async function POST() {
-  await disconnectWhatsApp();
-  return Response.json({ success: true, message: "Disconnected" });
+  const { error } = await supabase.from("whatsapp_commands").insert({
+    command: "disconnect",
+  });
+
+  if (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+
+  return Response.json({
+    success: true,
+  });
 }
