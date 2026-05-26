@@ -4,18 +4,33 @@ import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
 export default function WhatsAppDashboard() {
-  const [qr, setQr] = useState("");
-  const [status, setStatus] = useState("close");
+  // const [qr, setQr] = useState("");
+  // const [status, setStatus] = useState("close");
+  const [session, setSession] = useState(null);
 
+  // useEffect(() => {
+  //   const interval = setInterval(async () => {
+  //     const res = await fetch("/api/whatsapp/qr");
+  //     const data = await res.json();
+
+  //     setStatus(data.status);
+  //     if (data.qr) setQr(data.qr);
+  //     if (data.status === "open") setQr("");
+  //   }, 2000);
+
+  //   return () => clearInterval(interval);
+  // }, []);
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const res = await fetch("/api/whatsapp/qr");
+    async function loadStatus() {
+      const res = await fetch("/api/whatsapp/status");
       const data = await res.json();
 
-      setStatus(data.status);
-      if (data.qr) setQr(data.qr);
-      if (data.status === "open") setQr("");
-    }, 2000);
+      setSession(data);
+    }
+
+    loadStatus();
+
+    const interval = setInterval(loadStatus, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -23,6 +38,10 @@ export default function WhatsAppDashboard() {
   async function handleDisconnect() {
     await fetch("/api/whatsapp/disconnect", { method: "POST" });
   }
+
+  const status = session?.status || "close";
+  const qr = session?.qr || "";
+  const phone = session?.phone || "";
 
   return (
     <div className="p-8 space-y-6">
@@ -53,6 +72,7 @@ export default function WhatsAppDashboard() {
         <div className="space-y-4">
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
             ✅ WhatsApp Connected Successfully
+            <div className="mt-2 text-sm">{phone}</div>
           </div>
           <button
             onClick={handleDisconnect}
