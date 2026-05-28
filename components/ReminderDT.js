@@ -1,24 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
-function Badge({ children, color }) {
-  return (
-    <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${color}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-export default function DataTable() {
+export default function ReminderDT() {
   const [reminders, setReminders] = useState([]);
+  const [search, setSearch] = useState("");
+  const [sortAsc, setSortAsc] = useState(true);
   const [loading, setLoading] = useState(true);
 
+  // ─────────────────────────────
+  // FETCH DATA
+  // ─────────────────────────────
   async function fetchReminders() {
     try {
-      const res = await fetch("/api/reminders/list");
+      const res = await fetchWithAuth("/api/reminders/list");
       const data = await res.json();
 
       setReminders(data.reminders || []);
@@ -29,13 +25,15 @@ export default function DataTable() {
     }
   }
 
+  // ─────────────────────────────
+  // DELETE
+  // ─────────────────────────────
   async function deleteReminder(id) {
-    const ok = confirm("Hapus reminder ini?");
-
+    const ok = confirm("Delete reminder?");
     if (!ok) return;
 
     try {
-      await fetch(`/api/reminders/delete?id=${id}`, {
+      await fetchWithAuth(`/api/reminders/delete?id=${id}`, {
         method: "DELETE",
       });
 
@@ -45,193 +43,127 @@ export default function DataTable() {
     }
   }
 
-  async function toggleReminder(id, isActive) {
-    try {
-      await fetch("/api/reminders/toggle", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id,
-          is_active: !isActive,
-        }),
-      });
-
-      fetchReminders();
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
+  // ─────────────────────────────
+  // INIT
+  // ─────────────────────────────
   useEffect(() => {
     fetchReminders();
-
-    const interval = setInterval(() => {
-      fetchReminders();
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, []);
 
-  // function renderStatus(status) {
-  //   if (status === "pending") {
-  //     return <Badge color="bg-yellow-100 text-yellow-700">⏳ Pending</Badge>;
-  //   }
+  // ─────────────────────────────
+  // FILTER + SORT
+  // ─────────────────────────────
+  const filteredReminders = useMemo(() => {
+    let data = [...reminders];
 
-  //   if (status === "sent") {
-  //     return <Badge color="bg-green-100 text-green-700">✅ Sent</Badge>;
-  //   }
+    data = data.filter((r) => {
+      const keyword = search.toLowerCase();
 
-  //   if (status === "failed") {
-  //     return <Badge color="bg-red-100 text-red-700">❌ Failed</Badge>;
-  //   }
+      return (
+        r.message?.toLowerCase().includes(keyword) ||
+        r.customers?.name?.toLowerCase().includes(keyword) ||
+        r.customers?.phone?.toLowerCase().includes(keyword)
+      );
+    });
 
-  //   return <Badge color="bg-gray-100 text-gray-700">Unknown</Badge>;
-  // }
-
-  function renderStatus(item) {
-    const isRecurring = item.repeat_interval && item.repeat_unit;
-
-    if (isRecurring) {
-      if (!item.is_active) {
-        return <Badge color="bg-gray-100 text-gray-700">⏸ Paused</Badge>;
+    data.sort((a, b) => {
+      if (sortAsc) {
+        return (a.customers?.name || "").localeCompare(b.customers?.name || "");
       }
 
-      return <Badge color="bg-blue-100 text-blue-700">🔁 Recurring</Badge>;
-    }
+      return (b.customers?.name || "").localeCompare(a.customers?.name || "");
+    });
 
-    if (item.status === "pending") {
-      return <Badge color="bg-yellow-100 text-yellow-700">⏳ Pending</Badge>;
-    }
+    return data;
+  }, [reminders, search, sortAsc]);
 
-    if (item.status === "sent") {
-      return <Badge color="bg-green-100 text-green-700">✅ Sent</Badge>;
-    }
-
-    if (item.status === "failed") {
-      return <Badge color="bg-red-100 text-red-700">❌ Failed</Badge>;
-    }
-
-    return <Badge color="bg-gray-100 text-gray-700">Unknown</Badge>;
-  }
-
-  function formatRepeat(item) {
-    if (!item.repeat_interval || !item.repeat_unit) {
-      return "One Time";
-    }
-
-    const labels = {
-      minute: "Minute",
-      hout: "Hour",
-      day: "Day",
-      week: "Week",
-      month: "Month",
-      year: "Year",
-    };
-
-    const label = labels[item.repeat_unit] || item.repeat_unit;
-
-    return `Every ${item.repeat_interval} ${label}${
-      item.repeat_interval > 1 ? "s" : ""
-    }`;
-  }
-
+  // ─────────────────────────────
+  // UI
+  // ─────────────────────────────
   return (
     <div className="mt-10 border rounded-xl overflow-hidden bg-white">
-      <div className="p-4 border-b">
+      {/* HEADER */}
+      <div className="p-4 border-b flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
         <h2 className="text-xl font-semibold">Reminder List</h2>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Search reminder..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border rounded-lg px-3 py-2"
+          />
+
+          <button
+            onClick={() => setSortAsc(!sortAsc)}
+            className="border px-4 py-2 rounded-lg"
+          >
+            {sortAsc ? "A-Z" : "Z-A"}
+          </button>
+        </div>
       </div>
 
-      <div className="p-4">
-        {loading ? (
-          <div className="text-center py-10">Loading...</div>
-        ) : reminders.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">
-            No reminders found.
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {reminders.map((item) => (
-              <div
-                key={item.id}
-                className="border rounded-lg p-4 hover:border-black transition"
-              >
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">
-                      {item.customers?.name || "-"}
-                    </h3>
+      {/* TABLE */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100 text-left">
+            <tr>
+              <th className="p-4">No</th>
+              <th className="p-4">Customer</th>
+              <th className="p-4">Phone</th>
+              <th className="p-4">Message</th>
+              <th className="p-4">Status</th>
+              <th className="p-4">Schedule</th>
+              <th className="p-4">Action</th>
+            </tr>
+          </thead>
 
-                    <p className="text-sm text-gray-500">
-                      {item.customers?.phone || "-"}
-                    </p>
-                  </div>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="7" className="p-6 text-center">
+                  Loading...
+                </td>
+              </tr>
+            ) : filteredReminders.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="p-6 text-center text-gray-500">
+                  No reminders found.
+                </td>
+              </tr>
+            ) : (
+              filteredReminders.map((r, index) => (
+                <tr key={r.id} className="border-t hover:bg-gray-50">
+                  <td className="p-4">{index + 1}</td>
 
-                  <div className="flex gap-2 flex-wrap justify-end">
-                    <Badge
-                      color={
-                        item.is_active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-700"
-                      }
-                    >
-                      {item.is_active ? "🟢 Active" : "⏸ Paused"}
-                    </Badge>
+                  <td className="p-4 font-medium">
+                    {r.customers?.name || "-"}
+                  </td>
 
-                    {renderStatus(item)}
-                  </div>
-                </div>
+                  <td className="p-4">{r.customers?.phone || "-"}</td>
 
-                {/* Message */}
-                <div className="mt-4">
-                  <p
-                    className="text-sm text-gray-700 line-clamp-2"
-                    title={item.message}
-                  >
-                    {item.message}
-                  </p>
-                </div>
+                  <td className="p-4">{r.message}</td>
 
-                {/* Footer */}
-                <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <p className="text-xs text-gray-500">Next Run</p>
+                  <td className="p-4">{r.status}</td>
 
-                    <p className="text-sm">
-                      {new Date(item.scheduled_at).toLocaleString("id-ID", {
-                        timeZone: "Asia/Jakarta",
-                      })}
-                    </p>
+                  <td className="p-4">
+                    {new Date(r.scheduled_at).toLocaleString("id-ID")}
+                  </td>
 
-                    <p className="text-xs text-blue-600">
-                      {formatRepeat(item)}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2 w-full md:w-auto">
+                  <td className="p-4">
                     <button
-                      onClick={() => toggleReminder(item.id, item.is_active)}
-                      className={`px-3 py-2 rounded text-sm text-white ${
-                        item.is_active ? "bg-yellow-500" : "bg-green-600"
-                      }`}
-                    >
-                      {item.is_active ? "Pause" : "Resume"}
-                    </button>
-
-                    <button
-                      onClick={() => deleteReminder(item.id)}
-                      className="px-3 py-2 rounded text-sm bg-red-600 text-white"
+                      onClick={() => deleteReminder(r.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg"
                     >
                       Delete
                     </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
