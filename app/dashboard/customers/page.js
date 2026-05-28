@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import CustomerDT from "@/components/CustomerDT";
 
 export default function CustomersPage() {
@@ -10,56 +11,44 @@ export default function CustomersPage() {
   const [phone, setPhone] = useState("");
 
   async function fetchCustomers() {
-    try {
-      const res = await fetch("/api/customers/list");
+    const { data, error } = await supabase
+      .from("customers")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-      const data = await res.json();
-
-      setCustomers(data.customers || []);
-    } catch (err) {
-      console.error(err);
+    if (!error) {
+      setCustomers(data);
     }
   }
 
   async function addCustomer() {
-    try {
-      const res = await fetch("/api/customers/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          phone,
-        }),
-      });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      const data = await res.json();
+    const { error } = await supabase.from("customers").insert([
+      {
+        user_id: user.id,
+        name,
+        phone,
+      },
+    ]);
 
-      if (!res.ok) {
-        alert(data.error || "Failed");
-        return;
-      }
-
-      setName("");
-      setPhone("");
-
-      fetchCustomers();
-    } catch (err) {
-      console.error(err);
+    if (error) {
+      alert(error.message);
+      return;
     }
+
+    setName("");
+    setPhone("");
+
+    fetchCustomers();
   }
 
   async function deleteCustomer(id) {
-    try {
-      await fetch(`/api/customers/delete?id=${id}`, {
-        method: "DELETE",
-      });
+    await supabase.from("customers").delete().eq("id", id);
 
-      fetchCustomers();
-    } catch (err) {
-      console.error(err);
-    }
+    fetchCustomers();
   }
 
   useEffect(() => {
@@ -92,12 +81,7 @@ export default function CustomersPage() {
           Add Customer
         </button>
       </div>
-
-      <CustomerDT
-        customers={customers}
-        onDelete={deleteCustomer}
-        refreshCustomers={fetchCustomers}
-      />
+      <CustomerDT />
     </div>
   );
 }
