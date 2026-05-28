@@ -1,11 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-export async function GET() {
-  // ambil cookie login user
+export async function POST(req) {
   const cookieStore = cookies();
 
-  // client user auth
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
@@ -23,7 +21,6 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // belum login
   if (!user) {
     return Response.json(
       {
@@ -35,21 +32,44 @@ export async function GET() {
     );
   }
 
-  // ambil whatsapp session milik user ini
-  const { data, error } = await supabase
-    .from("whatsapp_sessions")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  const body = await req.json();
 
-  // belum ada session
-  if (error || !data) {
-    return Response.json({
-      status: "close",
-      qr: null,
-      phone: null,
-    });
+  const { name, phone } = body;
+
+  if (!name || !phone) {
+    return Response.json(
+      {
+        error: "Name & phone required",
+      },
+      {
+        status: 400,
+      },
+    );
   }
 
-  return Response.json(data);
+  const { data, error } = await supabase
+    .from("customers")
+    .insert({
+      user_id: user.id,
+      name,
+      phone,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return Response.json(
+      {
+        error: error.message,
+      },
+      {
+        status: 500,
+      },
+    );
+  }
+
+  return Response.json({
+    success: true,
+    customer: data,
+  });
 }

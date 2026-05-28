@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-export async function DELETE(req) {
+export async function PUT(req) {
   const cookieStore = cookies();
 
   const supabase = createClient(
@@ -16,7 +16,7 @@ export async function DELETE(req) {
     },
   );
 
-  // user login
+  // ambil user login
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -32,9 +32,9 @@ export async function DELETE(req) {
     );
   }
 
-  const { searchParams } = new URL(req.url);
+  const body = await req.json();
 
-  const id = searchParams.get("id");
+  const { id, name, phone } = body;
 
   if (!id) {
     return Response.json(
@@ -47,12 +47,28 @@ export async function DELETE(req) {
     );
   }
 
-  // delete hanya milik user ini
-  const { error } = await supabase
+  if (!name || !phone) {
+    return Response.json(
+      {
+        error: "Name & phone required",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  // update hanya milik user login
+  const { data, error } = await supabase
     .from("customers")
-    .delete()
+    .update({
+      name,
+      phone,
+    })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select()
+    .single();
 
   if (error) {
     return Response.json(
@@ -67,5 +83,6 @@ export async function DELETE(req) {
 
   return Response.json({
     success: true,
+    customer: data,
   });
 }
