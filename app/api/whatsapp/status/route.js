@@ -17,11 +17,15 @@ export async function GET() {
   const { data, error } = await supabase
     .from("whatsapp_sessions")
     .select("*")
-    .eq("id", "main")
+    .eq("user_id", "demo-user")
     .single();
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({
+      status: "close",
+      qr: null,
+      phone: null,
+    });
   }
 
   return Response.json(data);
