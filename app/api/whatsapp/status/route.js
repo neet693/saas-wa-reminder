@@ -1,54 +1,18 @@
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getAuthUser } from "@/lib/auth";
 
-export async function GET() {
-  // ambil cookie login user
-  const cookieStore = cookies();
+export async function GET(req) {
+  const user = await getAuthUser(req);
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  // client user auth
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: {
-        headers: {
-          Cookie: cookieStore.toString(),
-        },
-      },
-    },
-  );
-
-  // ambil user login
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // belum login
-  if (!user) {
-    return Response.json(
-      {
-        error: "Unauthorized",
-      },
-      {
-        status: 401,
-      },
-    );
-  }
-
-  // ambil whatsapp session milik user ini
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("whatsapp_sessions")
     .select("*")
     .eq("user_id", user.id)
     .single();
 
-  // belum ada session
   if (error || !data) {
-    return Response.json({
-      status: "close",
-      qr: null,
-      phone: null,
-    });
+    return Response.json(null);
   }
 
   return Response.json(data);
