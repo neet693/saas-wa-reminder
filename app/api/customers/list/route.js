@@ -1,22 +1,20 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function GET() {
   const cookieStore = cookies();
 
-  const supabase = createClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    process.env.NEXT_SUPABASE_ANON_KEY,
     {
-      global: {
-        headers: {
-          Cookie: cookieStore.toString(),
-        },
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
       },
     },
   );
 
-  // ambil user login
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -25,20 +23,18 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ambil customer milik user
   const { data, error } = await supabase
     .from("customers")
     .select("*")
     .eq("user_id", user.id)
-    .order("created_at", {
-      ascending: false,
-    });
+    .order("created_at", { ascending: false });
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
   return Response.json({
-    customers: data || [],
+    success: true,
+    customers: data,
   });
 }
