@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 export default function CustomerTable() {
   const [customers, setCustomers] = useState([]);
@@ -10,9 +11,8 @@ export default function CustomerTable() {
 
   async function fetchCustomers() {
     try {
-      const res = await fetch("/api/customers/list");
+      const res = await fetchWithAuth("/api/customers/list");
       const data = await res.json();
-
       setCustomers(data.customers || []);
     } catch (err) {
       console.error(err);
@@ -23,14 +23,12 @@ export default function CustomerTable() {
 
   async function deleteCustomer(id) {
     const ok = confirm("Delete customer?");
-
     if (!ok) return;
 
     try {
-      await fetch(`/api/customers/delete?id=${id}`, {
+      await fetchWithAuth(`/api/customers/delete?id=${id}`, {
         method: "DELETE",
       });
-
       fetchCustomers();
     } catch (err) {
       console.error(err);

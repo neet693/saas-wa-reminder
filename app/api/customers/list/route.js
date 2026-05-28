@@ -1,46 +1,17 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getAuthUser } from "@/lib/auth";
 
-export async function GET() {
-  const cookieStore = await cookies(); // ← tambah await
+export async function GET(req) {
+  const user = await getAuthUser(req);
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    },
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("customers")
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  return Response.json({
-    success: true,
-    customers: data || [],
-  });
+  return Response.json({ success: true, customers: data || [] });
 }
