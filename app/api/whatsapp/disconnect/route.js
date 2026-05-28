@@ -1,42 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getAuthUser } from "@/lib/auth";
 
-export async function POST() {
-  const cookieStore = cookies();
+export async function POST(req) {
+  const user = await getAuthUser(req);
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    {
-      global: {
-        headers: {
-          Cookie: cookieStore.toString(),
-        },
-      },
-    },
-  );
+  await supabaseAdmin.from("whatsapp_sessions").delete().eq("user_id", user.id);
 
-  // ambil user login
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // insert disconnect command
-  const { error } = await supabase.from("whatsapp_commands").insert({
-    user_id: user.id,
-    command: "disconnect",
-    executed: false,
-  });
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-
-  return Response.json({
-    success: true,
-  });
+  return Response.json({ success: true });
 }
