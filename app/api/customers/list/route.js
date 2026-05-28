@@ -9,15 +9,25 @@ export async function GET() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
       },
     },
   );
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
+
+  console.log("USER:", user);
+  console.log("USER ERROR:", userError);
 
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,12 +39,11 @@ export async function GET() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
+  console.log("CUSTOMERS:", data);
+  console.log("ERROR:", error);
 
   return Response.json({
     success: true,
-    customers: data,
+    customers: data || [],
   });
 }
