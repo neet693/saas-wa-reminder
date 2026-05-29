@@ -37,6 +37,10 @@ export default function CustomerTable() {
 
   useEffect(() => {
     fetchCustomers();
+
+    window.addEventListener("refresh-customers", fetchCustomers);
+    return () =>
+      window.removeEventListener("refresh-customers", fetchCustomers);
   }, []);
 
   const filteredCustomers = useMemo(() => {

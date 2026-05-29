@@ -1,59 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import CustomerDT from "@/components/CustomerDT";
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState([]);
-
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-
-  async function fetchCustomers() {
-    const { data, error } = await supabase
-      .from("customers")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!error) {
-      setCustomers(data);
-    }
-  }
+  const [loading, setLoading] = useState(false);
 
   async function addCustomer() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    if (!name || !phone) return;
 
-    const { error } = await supabase.from("customers").insert([
-      {
-        user_id: user.id,
-        name,
-        phone,
-      },
-    ]);
+    setLoading(true);
 
-    if (error) {
-      alert(error.message);
+    const res = await fetchWithAuth("/api/customers/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, phone }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error);
+      setLoading(false);
       return;
     }
 
     setName("");
     setPhone("");
+    setLoading(false);
 
-    fetchCustomers();
+    // Refresh tabel
+    window.dispatchEvent(new Event("refresh-customers"));
   }
-
-  async function deleteCustomer(id) {
-    await supabase.from("customers").delete().eq("id", id);
-
-    fetchCustomers();
-  }
-
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
 
   return (
     <div className="p-10 max-w-2xl mx-auto">
@@ -76,11 +57,13 @@ export default function CustomersPage() {
 
         <button
           onClick={addCustomer}
-          className="bg-black text-white p-2 rounded"
+          disabled={loading || !name || !phone}
+          className="bg-black text-white p-2 rounded disabled:opacity-50"
         >
-          Add Customer
+          {loading ? "Adding..." : "Add Customer"}
         </button>
       </div>
+
       <CustomerDT />
     </div>
   );

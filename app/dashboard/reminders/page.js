@@ -1,35 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import ReminderDT from "@/components/ReminderDT";
 
 export default function RemindersPage() {
   const [customers, setCustomers] = useState([]);
-
   const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [message, setMessage] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
-
   const [repeatInterval, setRepeatInterval] = useState("");
   const [repeatUnit, setRepeatUnit] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function fetchCustomers() {
-    const { data } = await supabase.from("customers").select("*");
-
-    setCustomers(data || []);
+    const res = await fetchWithAuth("/api/customers/list");
+    const data = await res.json();
+    setCustomers(data.customers || []);
   }
 
   async function addReminder() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      alert("User tidak ditemukan");
-      return;
-    }
-
     if ((repeatInterval && !repeatUnit) || (!repeatInterval && repeatUnit)) {
       alert("Repeat interval dan unit harus diisi bersamaan");
       return;
@@ -40,37 +30,49 @@ export default function RemindersPage() {
       return;
     }
 
+    setLoading(true);
+
     const scheduledAtUTC = new Date(scheduledAt).toISOString();
 
     const rows = selectedCustomers.map((customerId) => ({
-      user_id: user.id,
       customer_id: customerId,
       message,
       scheduled_at: scheduledAtUTC,
       status: "pending",
-
       repeat_interval: repeatInterval ? Number(repeatInterval) : null,
-
       repeat_unit: repeatUnit || null,
-
       is_active: true,
     }));
 
-    const { error } = await supabase.from("reminders").insert(rows);
+    // Kirim satu per satu supaya bisa cek limit per reminder
+    let hasError = false;
+    for (const row of rows) {
+      const res = await fetchWithAuth("/api/reminders/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(row),
+      });
 
-    if (error) {
-      alert(error.message);
-      return;
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error);
+        hasError = true;
+        break;
+      }
     }
 
-    setSelectedCustomers([]);
-    setMessage("");
-    setScheduledAt("");
+    setLoading(false);
 
-    setRepeatInterval("");
-    setRepeatUnit("");
-
-    alert("Reminder berhasil ditambahkan");
+    if (!hasError) {
+      setSelectedCustomers([]);
+      setMessage("");
+      setScheduledAt("");
+      setRepeatInterval("");
+      setRepeatUnit("");
+      alert("Reminder berhasil ditambahkan");
+      window.dispatchEvent(new Event("refresh-reminders"));
+    }
   }
 
   useEffect(() => {
@@ -84,7 +86,6 @@ export default function RemindersPage() {
       <div className="flex flex-col gap-4 mb-10">
         <div className="border rounded p-4 max-h-60 overflow-y-auto">
           <p className="font-semibold mb-3">Select Customers</p>
-
           <div className="flex flex-col gap-2">
             {customers.map((customer) => (
               <label key={customer.id} className="flex items-center gap-3">
@@ -101,10 +102,8 @@ export default function RemindersPage() {
                     }
                   }}
                 />
-
                 <div>
                   <p className="font-medium">{customer.name}</p>
-
                   <p className="text-sm text-gray-500">{customer.phone}</p>
                 </div>
               </label>
@@ -122,7 +121,6 @@ export default function RemindersPage() {
 
         <div>
           <label className="block mb-2 font-medium">Schedule Date & Time</label>
-
           <input
             type="datetime-local"
             className="border p-2 rounded w-full"
@@ -133,10 +131,8 @@ export default function RemindersPage() {
 
         <div className="border rounded p-4">
           <p className="font-semibold mb-3">Repeat Schedule (Optional)</p>
-
           <div className="flex gap-2 items-center flex-wrap">
             <span>Every</span>
-
             <input
               type="number"
               min="1"
@@ -146,32 +142,23 @@ export default function RemindersPage() {
               onChange={(e) => setRepeatInterval(e.target.value)}
               className="border p-2 rounded w-24 disabled:bg-gray-100"
             />
-
             <select
               value={repeatUnit}
               onChange={(e) => {
                 const value = e.target.value;
-
                 setRepeatUnit(value);
-
-                if (!value) {
-                  setRepeatInterval("");
-                }
+                if (!value) setRepeatInterval("");
               }}
               className="border p-2 rounded"
             >
               <option value="">One Time</option>
-
-              {/* Development */}
               <option value="minute">Minute</option>
-
               <option value="day">Day</option>
               <option value="week">Week</option>
               <option value="month">Month</option>
               <option value="year">Year</option>
             </select>
           </div>
-
           <p className="text-xs text-gray-500 mt-2">
             Biarkan "One Time" untuk reminder sekali kirim.
           </p>
@@ -179,10 +166,15 @@ export default function RemindersPage() {
 
         <button
           onClick={addReminder}
-          disabled={selectedCustomers.length === 0 || !message || !scheduledAt}
+          disabled={
+            selectedCustomers.length === 0 ||
+            !message ||
+            !scheduledAt ||
+            loading
+          }
           className="bg-black text-white p-2 rounded disabled:opacity-50"
         >
-          Add Reminder
+          {loading ? "Adding..." : "Add Reminder"}
         </button>
       </div>
 

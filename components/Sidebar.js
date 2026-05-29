@@ -28,6 +28,11 @@ const menus = [
     href: "/dashboard/whatsapp",
     icon: "💬",
   },
+  {
+    name: "Billing",
+    href: "/dashboard/billing",
+    icon: "💵",
+  },
 ];
 
 export default function Sidebar() {

@@ -48,6 +48,10 @@ export default function ReminderDT() {
   // ─────────────────────────────
   useEffect(() => {
     fetchReminders();
+
+    window.addEventListener("refresh-reminders", fetchReminders);
+    return () =>
+      window.removeEventListener("refresh-reminders", fetchReminders);
   }, []);
 
   // ─────────────────────────────
