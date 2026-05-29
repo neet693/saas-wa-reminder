@@ -9,20 +9,14 @@ const supabase = createClient(
 export async function GET() {
   try {
     // Total reminders
-    const { count: totalReminders } = await supabase
+    const { data: reminders, error: remindersError } = await supabase
       .from("reminders")
-      .select("*", {
-        count: "exact",
-        head: true,
-      });
+      .select("*");
 
     // Active reminders
-    const { count: activeReminders } = await supabase
+    const { data: activeData, error: activeError } = await supabase
       .from("reminders")
-      .select("*", {
-        count: "exact",
-        head: true,
-      })
+      .select("*")
       .eq("is_active", true);
 
     // WhatsApp session
@@ -41,9 +35,13 @@ export async function GET() {
       })
       .limit(5);
 
+    // Counts
+    const totalReminders = reminders?.length || 0;
+    const activeReminders = activeData?.length || 0;
+
     return NextResponse.json({
-      totalReminders: totalReminders || 0,
-      activeReminders: activeReminders || 0,
+      totalReminders,
+      activeReminders,
       whatsappStatus: session?.status || "disconnected",
       recentReminders: recentReminders || [],
     });
