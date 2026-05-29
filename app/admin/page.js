@@ -207,7 +207,7 @@ export default function AdminPage() {
             <tbody>
               {subscriptions.map((sub, index) => (
                 <tr key={sub.id} className="border-t hover:bg-gray-50">
-                  <td className="p-4">{sub.users?.email}</td>
+                  <td className="p-4">{sub.email}</td>
 
                   <td className="p-4">
                     <select

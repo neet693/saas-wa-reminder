@@ -69,7 +69,7 @@ export default function Sidebar() {
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-10">
-        {!collapsed && <h1 className="text-2xl font-bold">WA SaaS</h1>}
+        {!collapsed && <h1 className="text-2xl font-bold">WA Reminder</h1>}
 
         <button
           onClick={() => setCollapsed(!collapsed)}
