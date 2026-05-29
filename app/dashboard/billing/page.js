@@ -178,8 +178,8 @@ export default function BillingPage() {
           <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
             <p className="font-medium">Transfer ke:</p>
             <p>
-              BCA: <span className="font-mono font-bold">1234567890</span> a/n
-              Dave
+              BCA: <span className="font-mono font-bold">2832577368</span> a/n
+              Dave Guardyan Pakpahan
             </p>
             <p>QRIS: scan QR di bawah</p>
             <p className="text-gray-500">
